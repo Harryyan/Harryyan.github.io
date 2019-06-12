@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.0" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '7.1.0',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="随着智能手机，平板在中国普及率的上升，人们越来越依赖移动设备进行娱乐、消费，由此催生出的App更是层出不穷。根据苹果2019年2月的数据，目前AppStore上的App数量已经超过220万，比2018年同期增长了近10万个App。2015年6月到2016年6月可谓是App发展的高速时期，仅仅一年时间就增长了50万个App；同时期也是中国互联网+的黄金时期，各种创业项目，平台推出了各式各样的移动Ap">
+<meta name="keywords" content="dyld,Mach-O,Runtime">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iOS App启动的奥秘">
+<meta property="og:url" content="https://harryyan.github.io/2019/0420/the-mystery-of-ios-app-launch.html">
+<meta property="og:site_name" content="全栈iOS">
+<meta property="og:description" content="随着智能手机，平板在中国普及率的上升，人们越来越依赖移动设备进行娱乐、消费，由此催生出的App更是层出不穷。根据苹果2019年2月的数据，目前AppStore上的App数量已经超过220万，比2018年同期增长了近10万个App。2015年6月到2016年6月可谓是App发展的高速时期，仅仅一年时间就增长了50万个App；同时期也是中国互联网+的黄金时期，各种创业项目，平台推出了各式各样的移动Ap">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556123094/blogImages/app_launch/app_launch_process_y7gp4w.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556125886/blogImages/app_launch/kernel_otphqr.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556143096/blogImages/app_launch/dirty_page_cavdyh.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556145524/blogImages/app_launch/macho_file_koolwz.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556146160/blogImages/app_launch/macho_data_cizxtb.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556164832/blogImages/app_launch/macho_view_ofs7cx.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556165179/blogImages/app_launch/load_commands_fksg1b.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556265320/blogImages/app_launch/section_of_segment_zqokcw.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556313280/blogImages/app_launch/dyld_vxpafe.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556313614/blogImages/app_launch/dylibs_qo5got.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556334804/blogImages/app_launch/clean_dirty_page_gl1rhj.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556355653/blogImages/app_launch/rebase_binding_hyuhqt.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556520588/blogImages/app_launch/dyld3_zfbbh0.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556590441/blogImages/app_launch/statistics_x6tbzk.png">
+<meta property="og:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556579291/blogImages/app_launch/pre-main_dzlj6z.png">
+<meta property="og:updated_time" content="2019-05-04T20:28:20.576Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="iOS App启动的奥秘">
+<meta name="twitter:description" content="随着智能手机，平板在中国普及率的上升，人们越来越依赖移动设备进行娱乐、消费，由此催生出的App更是层出不穷。根据苹果2019年2月的数据，目前AppStore上的App数量已经超过220万，比2018年同期增长了近10万个App。2015年6月到2016年6月可谓是App发展的高速时期，仅仅一年时间就增长了50万个App；同时期也是中国互联网+的黄金时期，各种创业项目，平台推出了各式各样的移动Ap">
+<meta name="twitter:image" content="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556123094/blogImages/app_launch/app_launch_process_y7gp4w.png">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="全栈iOS" type="application/atom+xml">
+
+
+
+  
+  
+  <link rel="canonical" href="https://harryyan.github.io/2019/0420/the-mystery-of-ios-app-launch">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>iOS App启动的奥秘 | 全栈iOS</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+    <a href="https://your-url" class="github-corner" aria-label="View source on GitHub"><svg width="80" height="80" viewbox="0 0 250 250" style="fill:#151513; color:#fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a><style>.github-corner:hover .octo-arm{animation:octocat-wave 560ms ease-in-out}@keyframes octocat-wave{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-25deg)}40%,80%{transform:rotate(10deg)}}@media (max-width:500px){.github-corner:hover .octo-arm{animation:none}.github-corner .octo-arm{animation:octocat-wave 560ms ease-in-out}}</style>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">全栈iOS</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+      
+        <p class="site-subtitle">Stay Hungry，Stay Foolish</p>
+      
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>关于</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>搜索</a>
+        </li>
+      
+    </ul>
+  
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="搜索..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+  
+  
+
+  
+
+  <a href="https://github.com/harryyan" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewbox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a>
+
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://harryyan.github.io/2019/0420/the-mystery-of-ios-app-launch.html">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Harry Yan">
+      <meta itemprop="description" content="高级移动开发工程师，Scrum Master">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="全栈iOS">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">iOS App启动的奥秘
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-04-20 05:57:01" itemprop="dateCreated datePublished" datetime="2019-04-20T05:57:01+08:00">2019-04-20</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-05-05 04:28:20" itemprop="dateModified" datetime="2019-05-05T04:28:20+08:00">2019-05-05</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/开发基础/" itemprop="url" rel="index"><span itemprop="name">开发基础</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/开发基础/优化/" itemprop="url" rel="index"><span itemprop="name">优化</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/开发基础/优化/底层原理/" itemprop="url" rel="index"><span itemprop="name">底层原理</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+          
+
+          
+          
+
+          
+            <span class="post-meta-divider">|</span>
+            <span class="post-meta-item-icon">
+            <i class="fa fa-eye"></i>
+             阅读次数： 
+            <span class="busuanzi-value" id="busuanzi_value_page_pv"></span>
+            </span>
+          
+
+          
+            <div class="post-symbolscount">
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">本文字数：</span>
+                
+                <span title="本文字数">16k</span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">15 分钟</span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>随着智能手机，平板在中国普及率的上升，人们越来越依赖移动设备进行娱乐、消费，由此催生出的App更是层出不穷。根据苹果2019年2月的数据，目前AppStore上的App数量已经超过220万，比2018年同期增长了近10万个App。2015年6月到2016年6月可谓是App发展的高速时期，仅仅一年时间就增长了50万个App；同时期也是中国<strong>互联网+</strong>的黄金时期，各种创业项目，平台推出了各式各样的移动App产品。</p>
+<p>那么，随着App的爆发式增长，我们越来越清晰地发现：大多数App是无法长期停留在用户手机里的。今天这篇文章，我们将从一个<strong>开发者</strong>的角度来思考：如何提升用户体验，让我们的App在同类产品中脱颖而出，最终能够长期稳定的存在于用户手机之中。</p>
+<div class="note warning"><p>每当我们说到用户体验，我们往往想到的是优化界面，交互方式等。这些固然重要，但这更多的是产品和UX的职责。作为开发，我们更需要考虑他们无法完成的事情，更加高端的事情，比方说：<strong>优化App的启动流程</strong>。</p></div>
+
+<a id="more"></a>
+<h1 id="为什么要考虑App的启动时间"><a href="#为什么要考虑App的启动时间" class="headerlink" title="为什么要考虑App的启动时间"></a>为什么要考虑App的启动时间</h1><p>这个问题乍看上去有点废话连篇的意思，哪个用户不希望App能够飞速的打开? 哪个公司不希望自己的App能有这样好的性能？但这个问题，其实质是希望帮助开发人员<strong>理顺业务、服务的初始化思路，以及构建项目的方式。</strong></p>
+<p>在展开来说之前，我们需要定义下<strong>什么是App的启动：</strong></p>
+<div class="note info"><p>通俗来讲，就是从用户点击App图标开始，到看到第一个页面的时间间隔。</p>细分来看，App的启动分两种：<strong>冷启动</strong>和<strong>热启动</strong>。<ul><li>冷启动：App启动前，内核没有为它分配相应的进程。</li><li>热启动：App冷启动后，用户将App退出至后台，再进入的过程。</li></ul></div>
+
+<p>热启动没什么好说的，能做的通用的事情非常少。App从后台回来直接进入AppDelegate生命周期函数，剩下的就是App自身的业务逻辑，如果要优化，也仅是业务上的优化，恢复数据，做一些同步。所以本篇我们只展开讲冷启动(<strong>后文将用启动代替冷启动)</strong>的流程和优化。<strong>BTW:</strong> 笔者建议先从热启动开始优化，毕竟大部分的性能瓶颈都在自家代码里。</p>
+<h1 id="App启动步骤概览"><a href="#App启动步骤概览" class="headerlink" title="App启动步骤概览"></a>App启动步骤概览</h1><p>从大方向讲，App启动步骤分为三个阶段：</p>
+<ol>
+<li>从系统<strong>exec()</strong>调用到我们App的<strong>main()</strong>为止 (main函数之前)</li>
+<li><strong>main()</strong>执行之后</li>
+<li>首屏渲染结束(至第一个界面的<span style="color:#c7254e">viewDidAppear:</span>，nib loading)</li>
+</ol>
+<p>整个流程如下：</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556123094/blogImages/app_launch/app_launch_process_y7gp4w.png" alt></p>
+<p>概括来讲：<strong>内核先将我们的App加载进内存，之后加载一个“中间件”: dynamic loader(简称:dyld)。之后dyld会负责分析App的Mach-O文件以加载所需的dynamic libraries。之后利用Rebasing和Binding修正内部和外部指针指向。最后加载runtime组件，runtime组件加载好后就会向需要初始化的object发送消息，开始初始化。</strong> 至此，main函数之前的步骤结束。之后的流程就是我们耳熟能详的生命周期了，App开始在AppDelegate里面初始化我们自定义的服务以及渲染首屏等。</p>
+<h1 id="Crash-Course-名词速成班"><a href="#Crash-Course-名词速成班" class="headerlink" title="Crash Course (名词速成班)"></a>Crash Course (名词速成班)</h1><p>相信你看到这里或多或少已经对其中的一些名词感到陌生甚至”讨厌”了。这里面可能除了runtime，其他的你都没接触过。所以，这一小节我们针对上述流程涉及到的名词加以解释，并帮助大家扩充下底层知识，更好的理解main函数之前发生的事情。</p>
+<h2 id="内核"><a href="#内核" class="headerlink" title="内核"></a>内核</h2><p>内核是操作系统的核心。iOS和OS X使用的都是XNU内核。在这里，我们不需要知道XNU内核的详细架构，只需要知道它的功能即可，例如：提供基础服务，像线程，进程管理，IPC(进程间通信)，文件系统等等。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556125886/blogImages/app_launch/kernel_otphqr.png" alt></p>
+<p>上图阐述了内核是如何加载我们的App到进程中的。在这幅图里有两个关键点：</p>
+<ol>
+<li>PAGEZERO是怎么回事？</li>
+<li>为什么我们的App起始位置是不确定的？</li>
+</ol>
+<p>这就要涉及到下一个知识点：<strong>ASLR</strong>。</p>
+<h3 id="ASLR-地址空间布局随机化-Code-Sign"><a href="#ASLR-地址空间布局随机化-Code-Sign" class="headerlink" title="ASLR(地址空间布局随机化) + Code Sign"></a>ASLR(地址空间布局随机化) + Code Sign</h3><p>简单来说，就是当应用映射到逻辑地址空间的时候，利用ASLR技术，可以使得应用的起始地址总是随机的，以避免黑客通过起始地址+偏移量找到函数的地址。ASLR和Code Sign是iOS两种主要的安全技术。相信大家对Code Sign并不陌生，在底层上进行code sign的时候，加密哈希是针对Mach-O的每一个page，这就保证了dyld在加载Mach-O的时候可以确保单个page不被篡改。</p>
+<p>那<strong>PAGEZERO</strong>的作用又是什么呢？当系统利用ASLR分配了随机地址后，从0到该地址的整个区间会被标记为不可访问，意味着不可读，不可写，不可被执行。这个区域的大小苹果给出了官方的解释：</p>
+<ol>
+<li>针对32位进程，至少4KB</li>
+<li>针对64位进程，至少4GB</li>
+</ol>
+<p>这块区域可以帮助我们捕获任意的空指针和指针截断。(例如:64位指针转32位的时候)</p>
+<h3 id="虚拟内存"><a href="#虚拟内存" class="headerlink" title="虚拟内存"></a>虚拟内存</h3><p>理解了虚拟内存能够更好地帮助我们理解iOS内部机制。首先，现有的操作系统大都使用逻辑地址和物理地址这两个概念。逻辑地址可以理解为是虚拟地址，为的是”欺骗App”；但经过硬件和软件的配合，逻辑地址可以被映射到实实在在的物理地址上。</p>
+<div class="note default"><p>逻辑内存是被分页的，就像一整块蛋糕被分成多个小块一样。然后通过页表，映射到物理内存。物理内存是被分为很多帧的，和逻辑内存的页相对应。(<em>页面和帧的对应关系主要是通过页表来保存</em>)</p></div>
+
+<p>总的来说，逻辑地址空间(虚拟内存)大大提高了CPU的使用效率，使得多个程序可以被同时、按需加载进内存。</p>
+<p>iOS中，每一个进程都是一个逻辑地址空间，并且同时映射到物理内存上。这种映射不只是”一对一”关系，还可以是<strong>“一对0，多对一”</strong>。 当逻辑内存地址在物理内存上没有对应的地址时，就会发生page fault错误。这时候内核就会停止当前线程，分配一块物理内存给当前的逻辑地址；如果我们有两个进程运行在不同的逻辑地址空间，它们是可以同时映射到同一物理内存的，这时候就需要它们share部分的RAM了。</p>
+<p>那么问题来了，既然两个进程的某些逻辑地址空间可以同时映射到相同的物理地址，那么如果它们一方需要修改该地址内容的话，该如何是好呢？这就需要介绍下iOS的<strong>Copy-On-Write(COW)</strong>机制了。</p>
+<div class="note warning"><p>当一个进程试图向DATA page写入数据时，内核会立刻创建一个拷贝，并映射到另一个物理RAM</p></div>
+
+<p>至于什么是DATA page， 我们稍后在Mach-O章节介绍。</p>
+<p>当<strong>Copy-On-Write</strong>发生的时候，会产生dirty page, 与之相对的则是clean page。Clean page是那种内核可以之后从磁盘恢复的拷贝；而dirty page则包含了进程信息，无法被其他进程重用。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556143096/blogImages/app_launch/dirty_page_cavdyh.png" alt></p>
+<p>图中<strong>RAM 3</strong>所在的page就是一个dirty page。</p>
+<p>在dyld章节我会再次提到clean page和dirty page，着重讲解dyld是如何通过修改Mach-O的__Data段，从而产生dirty page。</p>
+<h2 id="Mach-O"><a href="#Mach-O" class="headerlink" title="Mach-O"></a>Mach-O</h2><p>Mach-O，全称是Mac object file format, 是一种文件类型。哪些文件是Mach-O呢？</p>
+<ul>
+<li><strong>Exectuable:</strong> 例如我们App bundle下的二进制文件</li>
+<li><strong>Dylib:</strong> 动态库，好比Windows下得DLL</li>
+<li><strong>Bundle:</strong> 指的是无法被链接，只能使用dlopen加载的动态库，例如Mac平台下的plug-ins</li>
+<li><strong>Image:</strong> 以上三个</li>
+<li><strong>Framework:</strong> 包含资源文件、头文件等的dylib</li>
+</ul>
+<h3 id="段-Segments"><a href="#段-Segments" class="headerlink" title="段(Segments)"></a>段(Segments)</h3><p>Apple的Mach-O文件可以分为三大部分：</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556145524/blogImages/app_launch/macho_file_koolwz.png" alt></p>
+<ol>
+<li>Header: 头部， 包含可执行的cpu架构，文件类型等，例如arm64，x86；MH_EXECUTE。(如果合并过架构，则会是Fat Header)</li>
+<li>Load commands: 加载命令，包含文件的组织架构和在虚拟内存中的布局方式</li>
+<li>Data: 数据，包含load commands中需要的各个段(segment)的数据，每一个Segment的大小都是Page的整数倍。</li>
+</ol>
+<p>Data部分示意图:</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556146160/blogImages/app_launch/macho_data_cizxtb.png" alt></p>
+<p>上例中，TEXT段大小是3页，DATA和LINKEDIT各是一页。Page的大小取决于硬件的架构，例如在arm64<br>架构下，每页是16KB；其余架构下每页是4KB。</p>
+<div class="note info"><p>Data部分包含哪些segment呢？绝大多数mach-o包括以下三段:</p><ul><li><strong>__TEXT: 代码段，只读，包括函数，和只读的常量，例如C字符串，上图中类似__TEXT, __text的都是代码段</strong></li><li><strong>__DATA: 数据段，读写，包括可读写的全局变量, 静态变量等，上图类似中的__DATA, __data都是数据段</strong></li><li><strong>__LINKEDIT: 如何加载程序, 包含了方法和变量的元数据（位置，偏移量），以及代码签名等信息。</strong></li></ul></div>
+
+<p>下图是我个人项目NetworkTransport的Mach-O文件布局: 从图中可以清晰的看到__TEXT和__DATA. 那__LINKEDIT去哪里了呢？据我观察__LINKEDIT似乎被隐藏了，但是其存储的元数据却是可见的，例如下图中笔者选中的<strong>Dynamic Loader Info</strong>一栏，Rebase的信息一览无余的展现在我们面前。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556164832/blogImages/app_launch/macho_view_ofs7cx.png" alt></p>
+<p>并且，当你展开<strong>Load Commands</strong>选项的时候，就会发现__LINKEDIT的段布局信息。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556165179/blogImages/app_launch/load_commands_fksg1b.png" alt></p>
+<h3 id="部分-Sections"><a href="#部分-Sections" class="headerlink" title="部分(Sections)"></a>部分(Sections)</h3><p>Section是段(Segment)中的子区域, 每个section包含的内容不同，大小也没有限制。例如在__TEXT segment里， <strong>text section包含的是可执行的机器码; </strong>cstring section包含C类常量字符串。值得注意的是，这里面的常量是没有重复的，原因是静态连接器在做构建的时候，合并了有相同值的常量。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556265320/blogImages/app_launch/section_of_segment_zqokcw.png" alt></p>
+<h3 id="PIC-Position-Independ-Code-code-gen"><a href="#PIC-Position-Independ-Code-code-gen" class="headerlink" title="PIC(Position Independ Code, code-gen)"></a>PIC(Position Independ Code, code-gen)</h3><p>在dyld拼接不同的dylibs的时候，dylibA也需要知道如何调用dylibB。但是由于每页都被签名的原因，dyld是无法直接去修改指令的。这时候code-gen，也就是动态PIC会在__DATA段为dylibA创建一个指针，指向dylibB的某个地址。比方说：dylibA想调用dylibB的sayHello方法，code-gen会先在Mach-O的__DATA段中建立一个指针指向sayHello，再通过这个指针实现间接调用。</p>
+<h1 id="dyld-dynamic-loader-linker"><a href="#dyld-dynamic-loader-linker" class="headerlink" title="dyld (dynamic loader/linker)"></a>dyld (dynamic loader/linker)</h1><h2 id="加载dylibs"><a href="#加载dylibs" class="headerlink" title="加载dylibs"></a>加载dylibs</h2><p>dyld是iOS平台上的二进制加载器或者说动态链接器，也是内核的得力”小助手”。它负责将程序依赖的各种动态库加载到进程。同时也肩负着修复内部和外部指针指向的责任(<a href="https://opensource.apple.com/source/dyld/" target="_blank" rel="noopener">传送门，dyld开源代码</a>)。下面我们就来看看dyld是如何帮助内核完成加载工作的。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556313280/blogImages/app_launch/dyld_vxpafe.png" alt></p>
+<p>从上图可以看到，ALSR将dyld也加载到了进程中一个随机地址，此时的dyld和App享有同样的权限。其实从加载完dyld之后，内核要做的事情就结束了，之后的所有步骤都由dyld完成。首先，dyld会读取Mach-O文件中的指令(Load commands)，去将其依赖的各个动态库映射到当前的逻辑地址空间，如果该动态库还依赖其他动态库，比方说下图的A库依赖C库，dyld会递归的将没加载过的dylib都加载到当前进程中(<em>具体由ImageLoader完成</em>)，直到所有的动态库加载完毕。Apple官方称，一个App通常会加载1到400个dylibs! 不过幸运的是，这其中大部分是系统的dylibs，Apple在操作系统启动的时候，也已经帮我们提前计算和缓存了这些dylibs的信息，这样dyld加载它们的时候就会快很多。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556313614/blogImages/app_launch/dylibs_qo5got.png" alt></p>
+<h2 id="Dirty-amp-Clean-Page"><a href="#Dirty-amp-Clean-Page" class="headerlink" title="Dirty &amp; Clean Page"></a>Dirty &amp; Clean Page</h2><p>我们在上文提到: 当<strong>Copy-On-Write</strong>发生时，该page会被标记为dirty，同时会被复制。下面我们通过一个实例来进一步理解虚拟内存和Mach-O布局，以及dyld是如何产生出dirty page的。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556334804/blogImages/app_launch/clean_dirty_page_gl1rhj.png" alt></p>
+<p>上图展示的是两个不同的进程共享同一个dylib的使用场景。我们从左到右看，左边的进程1先加载了该动态库，通过读取<strong>Load Commands</strong>, dyld知道要先加载__TEXT段(可读，可执行)，上图__TEXT段大小为3个page，但是dyld只会先将第一个page映射到物理RAM。之后读取__DATA段信息(可读可写)，在Mach-O章节中，我们已经知道，__DATA段存储了全局变量，而大部分的全局变量又都被初始化为0，所以在第一次被加载的时候，虚拟内存技术会将这些全局变量直接分配到一些page上(上图是3个page)，不从磁盘中读取。接着dyld加载__LINKEDIT段，并将其映射到物理RAM2。当dyld加载__LINKEDIT(只读)段时，会被告知需要做一些”修正”以便dylib可以被顺利运行，这时，dyld就需要向__DATA段写入一些数据了。当写入发生时，该page对应的物理RAM就包含了当前进程信息，变成了dirty page。最终，这个dylib占用了8个page，包含2个clean page，一个dirty page(其余还未被映射)。</p>
+<p>这时，如果有第二个进程同时引用了这个dylib，那么会发生什么呢？第一步同样是加载__TEXT段，不同的是，这次内核会发现在物理内存的某一处，已经加载过对应的__TEXT段，所以这次只是简单地把映射重定向下，不做任何IO操作。__LINKEDIT也是如此，区别就是这次变快了许多。当内核在寻找__DATA段的时候，它先会去检查是否还存在干净的副本，如果有，则直接映射；如果没有则需要重新从磁盘中读取，读取后dyld做修正，所以这个page也会变为dirty page。当dyld完成了修正过程后，__LINKEDIT也就不被再需要，内核可以在适当的时候释放其映射的物理RAM。</p>
+<p>总结下: 当两个进程共享一个dylib时,使用虚拟内存技术映射物理RAM，把原本16个脏页面变成了两个脏页面和一个干净的共享页面。但上例是针对Apple自己提供的动态库，如果是我们自己写的cocoatouch framework，不排除当两个进程共用一个framework时，可以共享某些page。例如两个App都依赖Alamofire网络库时，一个App先行加载其Mach-O文件到物理内存；当另一个App加载Alamofire时，直接映射即可。</p>
+<h1 id="Rebase-amp-Binding"><a href="#Rebase-amp-Binding" class="headerlink" title="Rebase &amp; Binding"></a>Rebase &amp; Binding</h1><p>这个步骤就是上文说到的”修正”步骤, 同时也用到了上文提到的PIC技术。Reabse是指修正内部指针指向; Binding是指修正外部指针指向。如下图所示: 指向_malloc和_free的指针是修正后的外部指针指向。而指向__TEXT的指针则是被修复后的内部指针指向。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556355653/blogImages/app_launch/rebase_binding_hyuhqt.png" alt></p>
+<p>这个步骤发生的原因我们上文提到过: ASLR。由于起始地址的偏移，所有_DATA段内指向Mach-O文件内部的指针都需要增加这个偏移量, 并且这些指针的信息可以在__LINKEDIT段中找到。既然Rebase需要写入数据到__DATA段，那也就意味着<strong>Copy-On-Write</strong>势必会发生，dirty page的创建，IO的开销也无法避免。</p>
+<p>Binding是__DATA段对外部符号的引用。不过和Rebase不同的是，binding是靠字符串的匹配来查找符号表的，虽说没有多少IO，但是计算多，比Rebase慢。</p>
+<p>使用如下命令可查看所有Resabe和Binding的修复:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xcrun dyldinfo -rebase -bind -lazy_bind NetworkTransport.app/NetworkTransport</span><br></pre></td></tr></table></figure>
+<h1 id="Objc-Runtime"><a href="#Objc-Runtime" class="headerlink" title="Objc Runtime"></a>Objc Runtime</h1><h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>Objective-C runtime是Objc这款语言的运行时函数库(<a href="https://opensource.apple.com/source/objc4/" target="_blank" rel="noopener">传送门，Runtime开源代码</a>)，负责支持我们日常用到的各种动态特性，例如<strong>Target-Action，Associated Objects，Method Swizzling等。</strong>当然，功能觉不仅限于此，运行时库更像是一个桥阶层，帮助Objc和其他语言更好地协同工作。</p>
+<p>Objc运行时库有很多的DATA数据结构，这些大都是系统类，这些系统类就会有很多的指针，例如指向其方法和超类。几乎所有的这些指针的修正都会在上一步完成。不过Objc runtime还需要做如下一些事情:</p>
+<ol>
+<li>为每一个类生成一张函数表: 在Objc里我们可以使用字符串来初始化一个类，原理就是该类拥有函数表。</li>
+<li>将分类(Category)里定义的扩展添加到函数表里: 如果分类override的原类的方法，则运行时会将其添加到函数表上方，调用时先用Category中定义的方法。</li>
+<li>确保选择器的唯一性: 和上一个类似，Objc是依靠Selector的，所以确保其唯一性就保证了调用的正确性。</li>
+</ol>
+<h2 id="Load-vs-Initialize"><a href="#Load-vs-Initialize" class="headerlink" title="Load vs Initialize"></a>Load vs Initialize</h2><p>在Objc时代，NSObject中有两个很特殊的方法: <strong>+load</strong> 和 <strong>+initialize</strong>，它们被用于类的初始化。</p>
+<h3 id="load"><a href="#load" class="headerlink" title="+load"></a>+load</h3><p>当类或者是Category被添加到Objc Runtime时，+load方法即被调用。一个很典型的例子就是Method Swizzling，由于Apple”自底向上”的初始化策略，当我们想替换系统的某个实现时，一般都会在自定义的类中重写+load方法，实现相关代码，已达到替换的目的。</p>
+<div class="note info"><p><ul><li>父类+load方法 <strong>先于</strong> 子类+load方法执行;</li><li>主类+load方法  <strong>先于</strong> Category的+load方法执行;</li><li>不同类+load方法调用顺序<strong>不确定</strong>。</li><ul></ul></ul></p></div>
+
+<p>下面我们来看看部分和+load方法相关的Objc runtime的源码，以加深对+load的理解。首先是文件<strong>objc-runtime-new.mm</strong> 中的 <strong>prepare_load_methods(header_info *hi)</strong> 函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">void prepare_load_methods(const headerType *mhdr)</span><br><span class="line">&#123;</span><br><span class="line">    size_t count, i;</span><br><span class="line"></span><br><span class="line">    runtimeLock.assertLocked();</span><br><span class="line"></span><br><span class="line">    classref_t *classlist = _getObjc2NonlazyClassList(mhdr, &amp;count);</span><br><span class="line">    for (i = 0; i &lt; count; i++) &#123;</span><br><span class="line">        schedule_class_load(remapClass(classlist[i]));</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    category_t **categorylist = _getObjc2NonlazyCategoryList(mhdr, &amp;count);</span><br><span class="line">    for (i = 0; i &lt; count; i++) &#123;</span><br><span class="line">        category_t *cat = categorylist[i];</span><br><span class="line">        Class cls = remapClass(cat-&gt;cls);</span><br><span class="line">        if (!cls) continue;  // category for ignored weak-linked class</span><br><span class="line">        realizeClass(cls);</span><br><span class="line">        assert(cls-&gt;ISA()-&gt;isRealized());</span><br><span class="line">        add_category_to_loadable_list(cat);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数是将那些实现了+load方法的类和Category找出并实现(realized), 之后将其加入对应的loadable列表。其中<strong> _getObjc2NonlazyClassList</strong>和<strong> _getObjc2NonlazyCategoryList</strong>两个方法就是找出这样的类和Category。Non lazy意味着它们实现了+load方法，与之对应的则是lazy class，它们没有实现+load方法，所以不会在App启动的时候初始化，而是在收到第一次消息时初始化，可谓名副其实的懒加载。Mach-O的non lazy类可以在<strong>__DATA, __objc_nlclslist</strong>部分看到。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">static void schedule_class_load(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    if (!cls) return;</span><br><span class="line">    assert(cls-&gt;isRealized());  // _read_images should realize</span><br><span class="line"></span><br><span class="line">    if (cls-&gt;data()-&gt;flags &amp; RW_LOADED) return;</span><br><span class="line"></span><br><span class="line">    // Ensure superclass-first ordering</span><br><span class="line">    schedule_class_load(cls-&gt;superclass);</span><br><span class="line"></span><br><span class="line">    add_class_to_loadable_list(cls);</span><br><span class="line">    cls-&gt;setInfo(RW_LOADED); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong> prepare_load_methods</strong>中还调用到了<strong>schedule_class_load</strong>方法，在该方法里第9行我们可以看到: 函数对传入参数的父类进行了递归调用，以确保父类优先的顺序。</p>
+<p>当类和Category准备好后，Objc runtime就可以对它们的+load方法调用了。打开文件<strong>objc-loadmethod.m</strong>，找到其中的<strong>call_load_methods</strong>函数。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">void call_load_methods(void)</span><br><span class="line">&#123;</span><br><span class="line">    static bool loading = NO;</span><br><span class="line">    bool more_categories;</span><br><span class="line">    </span><br><span class="line">    loadMethodLock.assertLocked();</span><br><span class="line">    </span><br><span class="line">    // Re-entrant calls do nothing; the outermost call will finish the job.</span><br><span class="line">    if (loading) return;</span><br><span class="line">    loading = YES;</span><br><span class="line">    </span><br><span class="line">    void *pool = objc_autoreleasePoolPush();</span><br><span class="line">    </span><br><span class="line">    do &#123;</span><br><span class="line">        // 1. Repeatedly call class +loads until there aren&apos;t any more</span><br><span class="line">        while (loadable_classes_used &gt; 0) &#123;</span><br><span class="line">            call_class_loads();</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        // 2. Call category +loads ONCE</span><br><span class="line">        more_categories = call_category_loads();</span><br><span class="line">        </span><br><span class="line">        // 3. Run more +loads if there are classes OR more untried categories</span><br><span class="line">    &#125; while (loadable_classes_used &gt; 0  ||  more_categories);</span><br><span class="line">    </span><br><span class="line">    objc_autoreleasePoolPop(pool);</span><br><span class="line">    </span><br><span class="line">    loading = NO;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个函数有两点值得注意:</p>
+<ol>
+<li>第12行和第26行的<strong>auto release pool</strong>操作，这意味着我们在自定义+load方法是不需要自己添加autorelease的block，Objc runtime帮我们处理了。</li>
+<li>第17行和第21行，类的+load先于Category调用。</li>
+</ol>
+<p>我们来看下call_class_loads的实现，call_category_loads方法和它异曲同工，就不详细介绍了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">static void call_class_loads(void)</span><br><span class="line">&#123;</span><br><span class="line">    int i;</span><br><span class="line">    </span><br><span class="line">    // Detach current loadable list.</span><br><span class="line">    struct loadable_class *classes = loadable_classes;</span><br><span class="line">    int used = loadable_classes_used;</span><br><span class="line">    loadable_classes = nil;</span><br><span class="line">    loadable_classes_allocated = 0;</span><br><span class="line">    loadable_classes_used = 0;</span><br><span class="line">    </span><br><span class="line">    // Call all +loads for the detached list.</span><br><span class="line">    for (i = 0; i &lt; used; i++) &#123;</span><br><span class="line">        Class cls = classes[i].cls;</span><br><span class="line">        load_method_t load_method = (load_method_t)classes[i].method;</span><br><span class="line">        if (!cls) continue; </span><br><span class="line">        </span><br><span class="line">        if (PrintLoading) &#123;</span><br><span class="line">            _objc_inform(&quot;LOAD: +[%s load]\n&quot;, cls-&gt;nameForLogging());</span><br><span class="line">        &#125;</span><br><span class="line">        (*load_method)(cls, SEL_load);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // Destroy the detached list.</span><br><span class="line">    if (classes) free(classes);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最关键的在第21行: (*load_method)(cls, SEL_load)。这意味着+load方法的调用不是我们熟知的<strong> objc_msgSend(消息机制)</strong>，而是直接使用其内存地址的方式调用。这也意味着，父类、子类和分类中的+load方法的实现是被区别对待的。如果子类实现+load方法而父类没有实现，则父类中的+load方法不会被调用；如果主类和分类都实现了+load方法，则两个都会被调用，不过Category的+load方法会后调，这也为我们实现Swizzling提供了契机。</p>
+<h3 id="initialize"><a href="#initialize" class="headerlink" title="+initialize"></a>+initialize</h3><p>+load方法在Swift中已经被废弃, 官方推荐使用+initialize来完成之前在+load中完成的事情。+initialize方法会在类或其子类收到第一条消息(方法调用)前调用。属于懒加载，节省系统资源，避免浪费。</p>
+<div class="note danger"><p>Swift3.1废弃了该方法, 不过可以用Objc的Category做该Swift类的扩展，依旧可以使用该函数；纯Swift环境下也有替代方法，会在之后的文章中介绍。</p></div>
+
+<p>打开<strong>objc-runtime-new.mm</strong>文件，找到<strong>lookUpImpOrForward</strong>方法:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">IMP lookUpImpOrForward(Class cls, SEL sel, id inst, </span><br><span class="line">                       bool initialize, bool cache, bool resolver)</span><br><span class="line">&#123;</span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">    if (initialize  &amp;&amp;  !cls-&gt;isInitialized()) &#123;</span><br><span class="line">        runtimeLock.unlock();</span><br><span class="line">        _class_initialize (_class_getNonMetaClass(cls, inst));</span><br><span class="line">        runtimeLock.lock();</span><br><span class="line">        // If sel == initialize, _class_initialize will send +initialize and </span><br><span class="line">        // then the messenger will send +initialize again after this </span><br><span class="line">        // procedure finishes. Of course, if this is not being called </span><br><span class="line">        // from the messenger then it won&apos;t happen. 2778172</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>当调用某个类的方法时，Objc runtime会使用这个函数去查找或者转发该消息。如果该类没有被初始化，则调用<strong> _class_initialize</strong>方法来初始化。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">void _class_initialize(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    assert(!cls-&gt;isMetaClass());</span><br><span class="line"></span><br><span class="line">    Class supercls;</span><br><span class="line">    bool reallyInitialize = NO;</span><br><span class="line"></span><br><span class="line">    // Make sure super is done initializing BEFORE beginning to initialize cls.</span><br><span class="line">    // See note about deadlock above.</span><br><span class="line">    supercls = cls-&gt;superclass;</span><br><span class="line">    if (supercls  &amp;&amp;  !supercls-&gt;isInitialized()) &#123;</span><br><span class="line">        _class_initialize(supercls);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    ...</span><br><span class="line">    </span><br><span class="line">#if __OBJC2__</span><br><span class="line">        @try</span><br><span class="line">#endif</span><br><span class="line">        &#123;</span><br><span class="line">            callInitialize(cls);</span><br><span class="line"></span><br><span class="line">            if (PrintInitializing) &#123;</span><br><span class="line">                _objc_inform(&quot;INITIALIZE: thread %p: finished +[%s initialize]&quot;,</span><br><span class="line">                             pthread_self(), cls-&gt;nameForLogging());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>第12行的递归调用保证了父类先于子类初始化；第21行调用<strong>callInitialize</strong>，代码如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">void callInitialize(Class cls)</span><br><span class="line">&#123;</span><br><span class="line">    ((void(*)(Class, SEL))objc_msgSend)(cls, SEL_initialize);</span><br><span class="line">    asm(&quot;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看出+initialize方法的调用和普通函数调用一样，走的都是发送消息的流程。也就是说，无论如何，父类的+initialize都会被调用，而且如果Category实现了+initialize方法，则会”覆盖”掉主类的+initialize方法(Category的实现在函数表中优先于主类)。</p>
+<p>而且还带来一个问题: 如果子类没有实现+initialize方法，那么父类的+initialize方法会被调用多次。如果想确保自己的+initialize方法只执行一次的话，有两种方式:</p>
+<ol>
+<li>判断当前Class是否是该类</li>
+<li>使用dispatch once token(和初始化一个Singleton一样)</li>
+</ol>
+<p>BTW, 无论是+load还是+initialize，都不需要在自己的实现里调用super load或者是super initialize。</p>
+<h1 id="Main函数的调用"><a href="#Main函数的调用" class="headerlink" title="Main函数的调用"></a>Main函数的调用</h1><p>dyld调用UIApplicationMain()。</p>
+<p>总结下: 内核加载App和dyld到进程中，dyld加载所有依赖的dylibs，修正所有DATA page，之后Objc runtime初始化所有类，最后调用main函数。</p>
+<h1 id="如何优化App启动时间"><a href="#如何优化App启动时间" class="headerlink" title="如何优化App启动时间"></a>如何优化App启动时间</h1><p>熬过了理论部分，现在我们来看看如何将其应用到实际开发中，来提升我们App的启动速度。</p>
+<h2 id="Apple已有的优化"><a href="#Apple已有的优化" class="headerlink" title="Apple已有的优化"></a>Apple已有的优化</h2><p>Apple的dyld 3(目前使用版本)与之前的dyld 2相比有了显著的优化。dyld 3由三个部分构成: </p>
+<ul>
+<li>进程无关的Mach-O解析器</li>
+<li>进程相关的启动回调引擎</li>
+<li>启动回调缓存服务</li>
+</ul>
+<p>启动回调(Launch Closure)是dyld 3引进的一个新概念，它是指启动你App所有的必要信息。比方说: 你的App用到哪些动态库，指针偏移量，代码签名位置等等。</p>
+<p>在dyld 2时代，所有我们之前提到的启动步骤都是发生在内核分配给你的进程中的(in-process); 而在dyld 3中，关于Mach-O文件的解析发生在App第一次安装或者是之后的更新过程中。解析过后，关于App启动的信息会被存到磁盘的某处，供App启动时使用。这两步大大提升了App加载的速度，系统库是有共享缓存的，所以加载速度不会慢，但我们自己App中也会有很多依赖库，每次根据@rpath查找，映射也是很耗时的工作，而且从App下载之后，这些依赖库也不会再变了，把它们放到out of process中实为明智之举。</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556520588/blogImages/app_launch/dyld3_zfbbh0.png" alt></p>
+<p>上图中虚线以上部分就是App第一次下载或更新时dyld会做的事情。虚线以下就是当App加载到进程中后dyld会做的事情, 除了需要从缓存中读取和验证信息之外，其他步骤都是一样的。</p>
+<p>Apple为什么要这样做？除了我们已经提到的性能优化，还有两个主要原因: 安全和可靠性。先说可靠性: 将这些步骤移出进程意味着dyld的大部分工作就像是一个普通的守护程序，Apple的工程师可以用标准工具去测试它，提升可靠性；至于安全性，Apple认为最容易被攻击的步骤是解析Mach-O头部和查询依赖库。攻击者可以搞乱App的@rpath路径，或者替换为其它library来完成<strong>@rpath confusion attacks。</strong> 所以Apple将其放入守护进程中加载。除此之外，符号表查找是另一项耗时工作，也完全可以放在进程外执行。因为除非更新软件和修改依赖库，否则该依赖库的符号表的内部偏移量是不会变的。</p>
+<h2 id="项目优化"><a href="#项目优化" class="headerlink" title="项目优化"></a>项目优化</h2><p>在优化之前，我们需要知道如何测量启动时间，为什么启动时间会慢以及多长时间的启动时间是可被接受的。</p>
+<h3 id="推荐的启动时间"><a href="#推荐的启动时间" class="headerlink" title="推荐的启动时间"></a>推荐的启动时间</h3><p>Apple推荐的启动时间是400ms, 当然最好是在App支持的最低配设备上达到这个标准。最长不要超过20s，否则系统会直接kill掉这个App。</p>
+<h3 id="如何测量启动时间"><a href="#如何测量启动时间" class="headerlink" title="如何测量启动时间"></a>如何测量启动时间</h3><p>Apple提供一个内置的环境变量来记录App启动时间(pre-main): <strong>DYLD_PRINT_STATISTICS</strong>。 具体配置方法如下:</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556590441/blogImages/app_launch/statistics_x6tbzk.png" alt></p>
+<p>之后启动App，在console中就可看到如下信息:</p>
+<p><img src="https://res.cloudinary.com/dwpjzbyux/image/upload/v1556579291/blogImages/app_launch/pre-main_dzlj6z.png" alt></p>
+<p>值得一提的是: dyld很智能，它会自动扣除Debugger的插入时间，所以不用担心Dev版本时间与发布版本不同。</p>
+<h3 id="优化启动时间"><a href="#优化启动时间" class="headerlink" title="优化启动时间"></a>优化启动时间</h3><p>基于上文的console信息，我们的优化可以从4个方面来开始:</p>
+<p>第一: 减少动态库的依赖。在iOS平台下，尽量减少项目所依赖的动态库; 如果无法减少，尝试将不同动态库合并。在项目开发阶段，有些程序员偏爱创建CocoaTouch Framework，觉得分离出业务逻辑以及依赖资源对开发和以后维护都有好处。但是，当这样做的时候，也需要考虑下App的启动时间以及性能，是否值得这样做。Apple的WWDC2016(Session 406)给出了一个例子: 一个项目依赖26个动态库，dylibs加载时间是240毫秒; 当将其合并成2个动态库时，加载时间变为20毫秒，可以说性能显著提高。</p>
+<p>第二: 减少指针的使用。从上图中我们可以发现, rebase和binding的时间占据了最多的时间消耗。也就是说dyld修复指针指向花费了300多毫秒。从上文我们知道，dyld修复的指针都位于__DATA段，所以我们需要做的很简单，减少项目中指针的使用。如何减少? 如果你的项目使用纯Objc开发，那就要适当减少类的个数，根据WWDC2016(Session 406)，Apple工程师的说法，项目中包含100，1000个类没什么太大的overhead，但要是5000到20000以上，则加载时间会多700到800毫秒。如果工程使用Swift居多，甚至是纯Swift，那么Apple建议能使用struct则使用struct，因为struct是值类型，不会引入指针(使用偏移量)。</p>
+<p>第三: 优化Objc建立时间。这一步包含四个步骤: </p>
+<ol>
+<li>注册类</li>
+<li>更新类实例变量偏移(例如SDK更新)</li>
+<li>注册Category</li>
+<li>选择器的唯一性</li>
+</ol>
+<p>这一步其实不用我们来优化，因为大部分的工作Apple已经帮我们做了，比方说ivar的偏移，这些会在rebase &amp; binding步骤完成。</p>
+<p>第四: 初始化。在iOS平台下，如果项目使用Objc编写，尽量少使用+load方法，如果非要使用, 替换为+initialize，延迟加载。如果项目已经使用Swift编写，那就没什么优化的了，Apple暗地里帮我们调用了他们自己的initializer(dispatch_once), 确保Swift class不会被初始化多次。</p>
+<p>不过Apple给的启动时间的信息还是太少，除了前三步，最后一步其实是可以度量的。现在的iOS App很多都在使用Cocoapods或是Carthage加载第三方依赖库。如果我们想获得每一个这样的依赖库初始化耗时时间，该怎么做呢？简单说就是Swizzling <strong>+load</strong>方法加上Instrument Static Initializers工具来追踪时间消耗，具体步骤可以参考这篇文章: <a href="https://juejin.im/post/59c623aff265da065754dc07" target="_blank" rel="noopener">如何精确度量 iOS App 的启动时间.</a></p>
+<p>这篇文章大致介绍了下App启动的流程, 涵盖的知识点比较多，无法在有限的篇幅里面再扩展更多。今后的文章里会有针对某一个知识点的深入挖掘，敬请期待!</p>
+<h1 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h1><p><a href="http://blog.leichunfeng.com/blog/2015/05/02/objective-c-plus-load-vs-plus-initialize/" target="_blank" rel="noopener">Objective-C +load vs +initialize</a><br><a href="https://wangdetong.github.io/2017/09/11/20170911%E4%BB%8E-dyld-%E5%88%B0-runtime/" target="_blank" rel="noopener">从 dyld 到 runtime</a><br><a href="https://developer.apple.com/videos/play/wwdc2017/413/" target="_blank" rel="noopener">App Startup Time: Past, Present, and Future</a><br><a href="https://developer.apple.com/videos/play/wwdc2016/406/?time=1154" target="_blank" rel="noopener">Optimizing App Startup Time</a><br><a href="https://juejin.im/post/59c623aff265da065754dc07" target="_blank" rel="noopener">如何精确度量 iOS App 的启动时间</a></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+     <div>
+       
+         <div>
+    
+        <div style="text-align:center;color: #555;font-size:14px;">-------------The End-------------</div>
+    
+</div>
+       
+     </div>
+
+    
+
+    
+      
+    
+    
+      <div>
+        <div id="reward-container">
+  <div></div>
+  <button id="reward-button" disable="enable" onclick="var qr = document.getElementById(&quot;qr&quot;); qr.style.display = (qr.style.display === 'none') ? 'block' : 'none';">
+    打赏
+  </button>
+  <div id="qr" style="display: none;">
+
+    
+      
+      
+        
+      
+      <div style="display: inline-block">
+        <img src="/images/wechatpay.jpg" alt="Harry Yan 微信支付">
+        <p>微信支付</p>
+      </div>
+    
+
+  </div>
+</div>
+
+      </div>
+    
+
+    
+      <div>
+        
+
+
+
+
+  
+
+
+
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>Harry Yan</li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    
+    <a href="https://harryyan.github.io/2019/0420/the-mystery-of-ios-app-launch.html" title="iOS App启动的奥秘">https://harryyan.github.io/2019/0420/the-mystery-of-ios-app-launch.html</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！</li>
+</ul>
+
+      </div>
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/dyld/" <i class="fa fa-tag"> dyld</a>
+          
+            <a href="/tags/Mach-O/" <i class="fa fa-tag"> Mach-O</a>
+          
+            <a href="/tags/Runtime/" <i class="fa fa-tag"> Runtime</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/0419/opening.html" rel="next" title="开篇">
+                <i class="fa fa-chevron-left"></i> 开篇
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/0510/swift-function-dispatch-mechanism.html" rel="prev" title="Swift函数派发机制">
+                Swift函数派发机制 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+            <a href="/">
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpg" alt="Harry Yan">
+            </a>
+            
+              <p class="site-author-name" itemprop="name">Harry Yan</p>
+              <div class="site-description motion-element" itemprop="description">高级移动开发工程师，Scrum Master</div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">3</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/harryyan" title="GitHub &rarr; https://github.com/harryyan" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:harryyan1238@gmail.com" title="E-Mail &rarr; mailto:harryyan1238@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://harryyan.github.io/cv" title="Resume &rarr; https://harryyan.github.io/cv"><i class="fa fa-fw fa-file"></i>Resume</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="skype:harryyan12381?call|chat" title="Skype &rarr; skype:harryyan12381?call|chat" rel="noopener" target="_blank"><i class="fa fa-fw fa-skype"></i>Skype</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#为什么要考虑App的启动时间"><span class="nav-number">1.</span> <span class="nav-text">为什么要考虑App的启动时间</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#App启动步骤概览"><span class="nav-number">2.</span> <span class="nav-text">App启动步骤概览</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Crash-Course-名词速成班"><span class="nav-number">3.</span> <span class="nav-text">Crash Course (名词速成班)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内核"><span class="nav-number">3.1.</span> <span class="nav-text">内核</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ASLR-地址空间布局随机化-Code-Sign"><span class="nav-number">3.1.1.</span> <span class="nav-text">ASLR(地址空间布局随机化) + Code Sign</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#虚拟内存"><span class="nav-number">3.1.2.</span> <span class="nav-text">虚拟内存</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Mach-O"><span class="nav-number">3.2.</span> <span class="nav-text">Mach-O</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#段-Segments"><span class="nav-number">3.2.1.</span> <span class="nav-text">段(Segments)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#部分-Sections"><span class="nav-number">3.2.2.</span> <span class="nav-text">部分(Sections)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PIC-Position-Independ-Code-code-gen"><span class="nav-number">3.2.3.</span> <span class="nav-text">PIC(Position Independ Code, code-gen)</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#dyld-dynamic-loader-linker"><span class="nav-number">4.</span> <span class="nav-text">dyld (dynamic loader/linker)</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#加载dylibs"><span class="nav-number">4.1.</span> <span class="nav-text">加载dylibs</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Dirty-amp-Clean-Page"><span class="nav-number">4.2.</span> <span class="nav-text">Dirty &amp; Clean Page</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Rebase-amp-Binding"><span class="nav-number">5.</span> <span class="nav-text">Rebase &amp; Binding</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Objc-Runtime"><span class="nav-number">6.</span> <span class="nav-text">Objc Runtime</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#简介"><span class="nav-number">6.1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Load-vs-Initialize"><span class="nav-number">6.2.</span> <span class="nav-text">Load vs Initialize</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#load"><span class="nav-number">6.2.1.</span> <span class="nav-text">+load</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#initialize"><span class="nav-number">6.2.2.</span> <span class="nav-text">+initialize</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Main函数的调用"><span class="nav-number">7.</span> <span class="nav-text">Main函数的调用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#如何优化App启动时间"><span class="nav-number">8.</span> <span class="nav-text">如何优化App启动时间</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Apple已有的优化"><span class="nav-number">8.1.</span> <span class="nav-text">Apple已有的优化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#项目优化"><span class="nav-number">8.2.</span> <span class="nav-text">项目优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#推荐的启动时间"><span class="nav-number">8.2.1.</span> <span class="nav-text">推荐的启动时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何测量启动时间"><span class="nav-number">8.2.2.</span> <span class="nav-text">如何测量启动时间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#优化启动时间"><span class="nav-number">8.2.3.</span> <span class="nav-text">优化启动时间</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#参考链接"><span class="nav-number">9.</span> <span class="nav-text">参考链接</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Harry Yan</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+      <span class="post-meta-item-text">站点总字数：</span>
+    
+    <span title="站点总字数">26k</span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    
+    <span title="站点阅读时长">24 分钟</span>
+  
+</div>
+
+
+  <!-- 
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/theme-next/hexo-theme-next">NexT.Pisces</a> v7.1.0</div>
+ -->
+
+
+
+
+<div id="days"></div>
+<script>
+function show_date_time(){
+    window.setTimeout("show_date_time()", 1000);
+    BirthDay=new Date("04/19/2019 15:13:14");//修改为自己的blog建站时间
+    today=new Date();
+    timeold=(today.getTime()-BirthDay.getTime());
+    sectimeold=timeold/1000
+    secondsold=Math.floor(sectimeold);
+    msPerDay=24*60*60*1000
+    e_daysold=timeold/msPerDay
+    daysold=Math.floor(e_daysold);
+    e_hrsold=(e_daysold-daysold)*24;
+    hrsold=setzero(Math.floor(e_hrsold));
+    e_minsold=(e_hrsold-hrsold)*60;
+    minsold=setzero(Math.floor((e_hrsold-hrsold)*60));
+    seconds=setzero(Math.floor((e_minsold-minsold)*60));
+    document.getElementById('days').innerHTML="本站已安全运行"+daysold+"天"+hrsold+"小时"+minsold+"分"+seconds+"秒";
+}
+function setzero(i){
+    if (i<10)
+    {i="0" + i};
+    return i;
+}
+show_date_time();
+</script>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+  
+    <span class="post-meta-item-icon">
+      <i class="fa fa-user"></i>
+    </span>
+    <span class="site-uv" title="总访客量">
+      <span class="busuanzi-value" id="busuanzi_value_site_uv"></span>
+    </span>
+  
+
+  
+    <span class="post-meta-divider">|</span>
+  
+
+  
+    <span class="post-meta-item-icon">
+      <i class="fa fa-eye"></i>
+    </span>
+    <span class="site-pv" title="总访问量">
+      <span class="busuanzi-value" id="busuanzi_value_site_pv"></span>
+    </span>
+  
+</div>
+
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.0"></script>
+
+  <script src="/js/motion.js?v=7.1.0"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/affix.js?v=7.1.0"></script>
+
+  <script src="/js/schemes/pisces.js?v=7.1.0"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.0"></script>
+<script src="/js/post-details.js?v=7.1.0"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.0"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+  
+
+
+  
+  <script>
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url).replace(/\/{2,}/g, '/');
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x"></i></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x"></i></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+<script>
+  $('.highlight').each(function(i, e) {
+    var $wrap = $('<div>').addClass('highlight-wrap');
+    $(e).after($wrap);
+    $wrap.append($('<button>').addClass('copy-btn').append('复制').on('click', function(e) {
+      var code = $(this).parent().find('.code').find('.line').map(function(i, e) {
+        return $(e).text();
+      }).toArray().join('\n');
+      var ta = document.createElement('textarea');
+      var yPosition = window.pageYOffset || document.documentElement.scrollTop;
+      ta.style.top = yPosition + 'px'; // Prevent page scroll
+      ta.style.position = 'absolute';
+      ta.style.opacity = '0';
+      ta.readOnly = true;
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, code.length);
+      ta.readOnly = false;
+      var result = document.execCommand('copy');
+      
+        if (result) $(this).text('复制成功');
+        else $(this).text('复制失败');
+      
+      ta.blur(); // For iOS
+      $(this).blur();
+    })).on('mouseleave', function(e) {
+      var $b = $(this).find('.copy-btn');
+      setTimeout(function() {
+        $b.text('复制');
+      }, 300);
+    }).append(e);
+  })
+</script>
+
+
+  
+
+  
+
+</body>
+</html>
